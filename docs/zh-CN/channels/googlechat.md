@@ -159,7 +159,8 @@ your-domain.com {
 
 使用这些标识符进行消息投递和允许列表：
 
-- 私信：`users/<userId>` 或 `users/<email>`（接受邮箱地址）。
+- 私信：`users/<userId>`（推荐）或原始邮箱 `name@example.com`（可变主体）。
+- 已弃用：`users/<email>` 现在仅被视为用户 ID，不再作为邮箱允许列表。此格式将在未来版本中移除。
 - 空间：`spaces/<spaceId>`。
 
 ## 配置要点

@@ -11,7 +11,7 @@ export type GoogleChatDmConfig = {
   enabled?: boolean;
   /** Direct message access policy (default: pairing). */
   policy?: DmPolicy;
-  /** Allowlist for DM senders (user ids or emails). */
+  /** Allowlist for DM senders. Use immutable user ids (users/<id>) or raw emails. Deprecated: users/<email> format is no longer treated as email matching. */
   allowFrom?: Array<string | number>;
 };
 
@@ -22,7 +22,7 @@ export type GoogleChatGroupConfig = {
   allow?: boolean;
   /** Require mentioning the bot to trigger replies. */
   requireMention?: boolean;
-  /** Allowlist of users that can invoke the bot in this space. */
+  /** Allowlist of users that can invoke the bot in this space. Use immutable user ids or raw emails. Deprecated: users/<email> is no longer treated as email matching. */
   users?: Array<string | number>;
   /** Optional system prompt for this space. */
   systemPrompt?: string;
@@ -52,7 +52,7 @@ export type GoogleChatAccountConfig = {
    * - "allowlist": only allow spaces present in channels.googlechat.groups
    */
   groupPolicy?: GroupPolicy;
-  /** Optional allowlist for space senders (user ids or emails). */
+  /** Optional allowlist for space senders. Use immutable user ids or raw emails. Deprecated: users/<email> is no longer treated as email matching. */
   groupAllowFrom?: Array<string | number>;
   /** Per-space configuration keyed by space id or name. */
   groups?: Record<string, GoogleChatGroupConfig>;

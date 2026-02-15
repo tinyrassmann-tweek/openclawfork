@@ -258,7 +258,7 @@ export async function buildLineMessageContext(params: BuildLineMessageContextPar
     MediaUrls: allMedia.length > 0 ? allMedia.map((m) => m.path) : undefined,
     MediaTypes:
       allMedia.length > 0
-        ? (allMedia.map((m) => m.contentType).filter(Boolean) as string[])
+        ? allMedia.map((m) => m.contentType ?? "")
         : undefined,
     ...locationContext,
     OriginatingChannel: "line" as const,

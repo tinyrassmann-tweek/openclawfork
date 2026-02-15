@@ -179,4 +179,25 @@ describe("archive utils", () => {
       }),
     ).rejects.toThrow(/absolute|escapes destination/i);
   });
+
+  it("rejects zip entries that exceed path depth limit", async () => {
+    const workDir = await makeTempDir();
+    const archivePath = path.join(workDir, "deep.zip");
+    const extractDir = path.join(workDir, "extract");
+
+    const deepPath = Array.from({ length: 5 }, (_, i) => `d${i}`).join("/") + "/file.txt";
+    const zip = new JSZip();
+    zip.file(deepPath, "deep");
+    await fs.writeFile(archivePath, await zip.generateAsync({ type: "nodebuffer" }));
+
+    await fs.mkdir(extractDir, { recursive: true });
+    await expect(
+      extractArchive({
+        archivePath,
+        destDir: extractDir,
+        timeoutMs: 5_000,
+        limits: { maxPathDepth: 3 },
+      }),
+    ).rejects.toThrow("archive entry path depth exceeds limit");
+  });
 });

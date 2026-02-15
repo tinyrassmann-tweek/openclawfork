@@ -216,19 +216,19 @@ function parseCallbackInput(
   try {
     const url = new URL(trimmed);
     const code = url.searchParams.get("code");
-    const state = url.searchParams.get("state") ?? expectedState;
+    const state = url.searchParams.get("state");
     if (!code) {
       return { error: "Missing 'code' parameter in URL" };
     }
     if (!state) {
       return { error: "Missing 'state' parameter. Paste the full URL." };
     }
+    if (state !== expectedState) {
+      return { error: "OAuth state mismatch - possible CSRF attack. Please retry login." };
+    }
     return { code, state };
   } catch {
-    if (!expectedState) {
-      return { error: "Paste the full redirect URL, not just the code." };
-    }
-    return { code: trimmed, state: expectedState };
+    return { error: "Paste the full redirect URL, not just the code." };
   }
 }
 

@@ -25,6 +25,8 @@ export type ArchiveExtractLimits = {
   maxExtractedBytes?: number;
   /** Max extracted bytes for a single file entry. */
   maxEntryBytes?: number;
+  /** Max depth of nested directories in entry paths. */
+  maxPathDepth?: number;
 };
 
 /** @internal */
@@ -35,12 +37,15 @@ export const DEFAULT_MAX_ENTRIES = 50_000;
 export const DEFAULT_MAX_EXTRACTED_BYTES = 512 * 1024 * 1024;
 /** @internal */
 export const DEFAULT_MAX_ENTRY_BYTES = 256 * 1024 * 1024;
+/** @internal */
+export const DEFAULT_MAX_PATH_DEPTH = 256;
 
 const ERROR_ARCHIVE_SIZE_EXCEEDS_LIMIT = "archive size exceeds limit";
 const ERROR_ARCHIVE_ENTRY_COUNT_EXCEEDS_LIMIT = "archive entry count exceeds limit";
 const ERROR_ARCHIVE_ENTRY_EXTRACTED_SIZE_EXCEEDS_LIMIT =
   "archive entry extracted size exceeds limit";
 const ERROR_ARCHIVE_EXTRACTED_SIZE_EXCEEDS_LIMIT = "archive extracted size exceeds limit";
+const ERROR_ARCHIVE_PATH_DEPTH_EXCEEDS_LIMIT = "archive entry path depth exceeds limit";
 
 const TAR_SUFFIXES = [".tgz", ".tar.gz", ".tar"];
 
@@ -116,7 +121,7 @@ function isWindowsDrivePath(p: string): boolean {
   return /^[a-zA-Z]:[\\/]/.test(p);
 }
 
-function validateArchiveEntryPath(entryPath: string): void {
+function validateArchiveEntryPath(entryPath: string, maxPathDepth?: number): void {
   if (!entryPath || entryPath === "." || entryPath === "./") {
     return;
   }
@@ -129,6 +134,12 @@ function validateArchiveEntryPath(entryPath: string): void {
   }
   if (path.posix.isAbsolute(normalized) || normalized.startsWith("//")) {
     throw new Error(`archive entry is absolute: ${entryPath}`);
+  }
+  if (maxPathDepth != null) {
+    const depth = normalized.split("/").filter(Boolean).length;
+    if (depth > maxPathDepth) {
+      throw new Error(ERROR_ARCHIVE_PATH_DEPTH_EXCEEDS_LIMIT);
+    }
   }
 }
 
@@ -176,6 +187,7 @@ function resolveExtractLimits(limits?: ArchiveExtractLimits): ResolvedArchiveExt
     maxEntries: clampLimit(limits?.maxEntries) ?? DEFAULT_MAX_ENTRIES,
     maxExtractedBytes: clampLimit(limits?.maxExtractedBytes) ?? DEFAULT_MAX_EXTRACTED_BYTES,
     maxEntryBytes: clampLimit(limits?.maxEntryBytes) ?? DEFAULT_MAX_ENTRY_BYTES,
+    maxPathDepth: clampLimit(limits?.maxPathDepth) ?? DEFAULT_MAX_PATH_DEPTH,
   };
 }
 
@@ -282,13 +294,13 @@ async function extractZip(params: {
   const budget = createByteBudgetTracker(limits);
 
   for (const entry of entries) {
-    validateArchiveEntryPath(entry.name);
+    validateArchiveEntryPath(entry.name, limits.maxPathDepth);
 
     const relPath = stripArchivePath(entry.name, strip);
     if (!relPath) {
       continue;
     }
-    validateArchiveEntryPath(relPath);
+    validateArchiveEntryPath(relPath, limits.maxPathDepth);
 
     const outPath = resolveCheckedOutPath(params.destDir, relPath, entry.name);
     if (entry.dir) {
@@ -376,13 +388,13 @@ export async function extractArchive(params: {
           const info = readTarEntryInfo(entry);
 
           try {
-            validateArchiveEntryPath(info.path);
+            validateArchiveEntryPath(info.path, limits.maxPathDepth);
 
             const relPath = stripArchivePath(info.path, strip);
             if (!relPath) {
               return;
             }
-            validateArchiveEntryPath(relPath);
+            validateArchiveEntryPath(relPath, limits.maxPathDepth);
             resolveCheckedOutPath(params.destDir, relPath, info.path);
 
             if (

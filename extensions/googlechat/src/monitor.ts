@@ -79,10 +79,11 @@ function warnDeprecatedUsersEmailEntries(
     return;
   }
   warnedDeprecatedUsersEmailAllowFrom.add(key);
-  logVerbose(
-    core,
-    runtime,
-    `Deprecated allowFrom entry detected: "users/<email>" is no longer treated as an email allowlist. Use raw email (alice@example.com) or immutable user id (users/<id>). entries=${deprecated.join(", ")}`,
+  // Emit at warn level so operators notice without enabling verbose logging.
+  runtime.log?.(
+    `[googlechat] WARNING: Deprecated allowFrom entry detected: "users/<email>" is no longer treated as an email allowlist. ` +
+      `Use raw email (alice@example.com) or immutable user id (users/<id>). ` +
+      `This format will be removed in a future release. entries=${deprecated.join(", ")}`,
   );
 }
 

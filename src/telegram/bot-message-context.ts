@@ -661,7 +661,7 @@ export const buildTelegramMessageContext = async ({
     MediaTypes: stickerCacheHit
       ? undefined
       : allMedia.length > 0
-        ? (allMedia.map((m) => m.contentType).filter(Boolean) as string[])
+        ? allMedia.map((m) => m.contentType ?? "")
         : undefined,
     Sticker: allMedia[0]?.stickerMetadata,
     ...(locationData ? toLocationContext(locationData) : undefined),
