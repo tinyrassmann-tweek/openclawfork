@@ -4,6 +4,7 @@ import type { GatewayDiscoverOpts } from "./discover.js";
 import { gatewayStatusCommand } from "../../commands/gateway-status.js";
 import { formatHealthChannelLines, type HealthSummary } from "../../commands/health.js";
 import { loadConfig } from "../../config/config.js";
+import { resolveGatewayLogPaths } from "../../daemon/launchd.js";
 import { discoverGatewayBeacons } from "../../infra/bonjour-discovery.js";
 import { resolveWideAreaDiscoveryDomain } from "../../infra/widearea-dns.js";
 import { defaultRuntime } from "../../runtime.js";
@@ -195,6 +196,44 @@ export function registerGatewayCli(program: Command) {
     .option("--json", "Output JSON", false)
     .action(async (opts) => {
       await runDaemonRestart(opts);
+    });
+
+  gateway
+    .command("logs")
+    .description("Show gateway log file paths or tail logs")
+    .option("--tail", "Tail the log files (follows output)", false)
+    .option("-n, --lines <count>", "Number of lines to show (default: 50)", "50")
+    .option("--err", "Show only the error log", false)
+    .option("--json", "Output JSON", false)
+    .action(async (opts) => {
+      await runGatewayCommand(async () => {
+        const { logDir, stdoutPath, stderrPath } = resolveGatewayLogPaths(process.env);
+
+        if (opts.json) {
+          defaultRuntime.log(JSON.stringify({ logDir, stdoutPath, stderrPath }, null, 2));
+          return;
+        }
+
+        const rich = isRich();
+        const fmtLine = (label: string, value: string) =>
+          `${colorize(rich, theme.muted, `${label}:`)} ${colorize(rich, theme.command, value)}`;
+        defaultRuntime.log(colorize(rich, theme.heading, "Gateway Logs"));
+        defaultRuntime.log(fmtLine("Log dir", logDir));
+        defaultRuntime.log(fmtLine("stdout", stdoutPath));
+        defaultRuntime.log(fmtLine("stderr", stderrPath));
+
+        if (opts.tail) {
+          const { spawn } = await import("node:child_process");
+          const files = opts.err ? [stderrPath] : [stdoutPath, stderrPath];
+          const lines = String(opts.lines || "50");
+          const child = spawn("tail", ["-n", lines, "-f", ...files], {
+            stdio: "inherit",
+          });
+          await new Promise<void>((resolve) => {
+            child.on("close", () => resolve());
+          });
+        }
+      }, "Gateway logs failed");
     });
 
   gatewayCallOpts(
